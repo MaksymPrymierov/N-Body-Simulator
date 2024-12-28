@@ -7,3 +7,4 @@ authors = ["Maksym Prymierov <primerovmax@gmail.com>"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+vecmath = "1.0"
