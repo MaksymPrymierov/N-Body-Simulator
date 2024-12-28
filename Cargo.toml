@@ -8,3 +8,4 @@ authors = ["Maksym Prymierov <primerovmax@gmail.com>"]
 
 [dependencies]
 vecmath = "1.0"
+rand = "0.8"
