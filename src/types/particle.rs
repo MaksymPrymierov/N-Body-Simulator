@@ -65,42 +65,42 @@ impl Particle {
     }
 
     pub fn id(&self) -> u64 {
-        return self.m_id;
+        self.m_id
     }
 
     pub fn pos(&self) -> Vector3<f64> {
-        return self.m_position;
+        self.m_position
     }
 
     pub fn velocity(&self) -> Vector3<f64> {
-        return self.m_velocity;
+        self.m_velocity
     }
 
     pub fn acceleration(&self) -> Vector3<f64> {
-        return self.m_acceleration;
+        self.m_acceleration
     }
 
     pub fn mass(&self) -> f64 {
-        return self.m_mass;
+        self.m_mass
     }
 
     pub fn id_mut(&mut self) -> &mut u64 {
-        return &mut self.m_id;
+        &mut self.m_id
     }
 
     pub fn pos_mut(&mut self) -> &mut Vector3<f64> {
-        return &mut self.m_position;
+        &mut self.m_position
     }
 
     pub fn velocity_mut(&mut self) -> &mut Vector3<f64> {
-        return &mut self.m_velocity;
+        &mut self.m_velocity
     }
 
     pub fn acceleration_mut(&mut self) -> &mut Vector3<f64> {
-        return &mut self.m_acceleration;
+        &mut self.m_acceleration
     }
 
     pub fn mass_mut(&mut self) -> &mut f64 {
-        return &mut self.m_mass;
+        &mut self.m_mass
     }
 }
