@@ -52,7 +52,7 @@ impl Particle {
         }
 
         for x in rand_acceleration.iter_mut() {
-            *x = rand::random();
+            *x = 0.0;
         }
 
         Self {
