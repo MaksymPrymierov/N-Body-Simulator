@@ -1,2 +1,2 @@
-pub mod particle;
 pub mod nbodysystem;
+pub mod particle;

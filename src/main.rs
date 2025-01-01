@@ -1,20 +1,39 @@
+use crate::types::nbodysystem::NBodySystem;
 use crate::types::particle::Particle;
-use crate::physics::gravity::gravitational_force;
 
 pub mod physics;
 pub mod types;
 
 fn main() {
-    let line = "-".repeat(150);
-    let body1: Particle = Particle::new(0, [-50.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0], 10.5e14);
-    let body2: Particle = Particle::new(0, [50.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0], 1.5e14);
+    let mut system = NBodySystem::default();
 
-    println!("First Body: {:?}", body1);
-    println!("Second Body: {:?}", body2);
-    println!("{}", line);
+    const PARTICLE_MASS: f64 = 1.5e14;
+    system.add_particle(Particle::new(
+        0,
+        [-50.0, 0.0, 0.0],
+        [0.0, 0.0, 0.0],
+        [0.0, 0.0, 0.0],
+        PARTICLE_MASS,
+    ));
+    system.add_particle(Particle::new(
+        1,
+        [50.0, 0.0, 0.0],
+        [0.0, 0.0, 0.0],
+        [0.0, 0.0, 0.0],
+        PARTICLE_MASS,
+    ));
+    system.add_particle(Particle::new(
+        2,
+        [100.0, 0.0, 0.0],
+        [0.0, 0.0, 0.0],
+        [0.0, 0.0, 0.0],
+        PARTICLE_MASS,
+    ));
 
-    let force_on_first_body = gravitational_force(&body1, &body2);
+    for i in 0..system.len() {
+        println!("{:?}", system.get_particle_by_index(i).unwrap());
+    }
 
-    println!("Force on first object = {:?}", force_on_first_body);
-    println!("Force on second object = {:?}", vecmath::vec3_neg(force_on_first_body));
+    let forces = system.compute_all_forces();
+    println!("{:?}", forces);
 }

@@ -1,14 +1,14 @@
 use crate::types::particle::Particle;
-use vecmath::Vector3;
-use vecmath::vec3_sub;
-use vecmath::vec3_square_len;
 use vecmath::vec3_normalized;
 use vecmath::vec3_scale;
+use vecmath::vec3_square_len;
+use vecmath::vec3_sub;
+use vecmath::Vector3;
 
 // gravitational constant in SI units
 pub const G: f64 = 6.67430e-11;
 
-// The force of interaction between two bodies is directly proportional to the mass of each body F = G * (m1 * m2) / r^2 
+// The force of interaction between two bodies is directly proportional to the mass of each body F = G * (m1 * m2) / r^2
 pub fn gravitational_force(p1: &Particle, p2: &Particle) -> Vector3<f64> {
     // vector from p1 to p2
     let r_vec = vec3_sub::<f64>(p2.pos(), p1.pos());

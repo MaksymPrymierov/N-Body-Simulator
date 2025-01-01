@@ -27,8 +27,8 @@ impl Particle {
         pos: Vector3<f64>,
         velocity: Vector3<f64>,
         acceleration: Vector3<f64>,
-        mass: f64) -> Self {
-
+        mass: f64,
+    ) -> Self {
         Self {
             m_id: id,
             m_position: pos,
