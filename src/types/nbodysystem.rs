@@ -1,6 +1,6 @@
-#![allow(dead_code)] //Delete later
-
 use super::particle::Particle;
+use vecmath::{vec3_add, Vector3};
+use crate::physics::gravity::gravitational_force;
 
 pub struct NBodySystem {
     m_particles: Vec<Particle>
@@ -61,5 +61,26 @@ impl NBodySystem {
 
     pub fn is_empty(&self) -> bool {
         return self.m_particles.is_empty();
+    }
+
+    pub fn compute_all_forces(&self) -> Vec<Vector3<f64>> {
+        if self.m_particles.len() == 0 {
+            println!("No particles in system");
+            return Default::default();
+        }
+
+        let mut gravity_forces: Vec<Vector3<f64>> = vec![Default::default(); self.m_particles.len()];
+        let mut body1_counter = 0;
+        for body1 in self.m_particles.iter().clone() {
+            let mut body2_counter = body1_counter + 1;
+            for body2 in self.m_particles.iter().skip(body2_counter).clone() {
+                let gravy_force = gravitational_force(&body1, &body2);
+                gravity_forces[body1_counter] = vec3_add(gravity_forces[body1_counter], gravy_force);
+                gravity_forces[body2_counter] = vec3_add(gravity_forces[body2_counter], vecmath::vec3_neg(gravy_force));
+                body2_counter += 1;
+            }
+            body1_counter += 1;
+        }
+        gravity_forces
     }
 }
