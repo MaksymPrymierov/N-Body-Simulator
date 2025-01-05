@@ -1,4 +1,4 @@
-use vecmath::Vector3;
+use vecmath::{vec3_add, vec3_scale, Vector3};
 
 #[derive(Debug)]
 pub struct Particle {
@@ -102,5 +102,13 @@ impl Particle {
 
     pub fn mass_mut(&mut self) -> &mut f64 {
         &mut self.m_mass
+    }
+
+    pub fn update_particle_euler(&mut self, force: Vector3<f64>, dt: f64) {
+        self.m_velocity = vec3_add(
+            self.m_velocity,
+            vec3_scale(vec3_scale(force, 1.0 / self.m_mass), dt),
+        );
+        self.m_position = vec3_add(self.m_position, vec3_scale(self.m_velocity, dt));
     }
 }

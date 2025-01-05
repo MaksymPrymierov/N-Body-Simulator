@@ -30,10 +30,13 @@ fn main() {
         PARTICLE_MASS,
     ));
 
-    for i in 0..system.len() {
-        println!("{:?}", system.get_particle_by_index(i).unwrap());
-    }
-
     let forces = system.compute_all_forces();
     println!("{:?}", forces);
+
+    for (i, force) in forces.iter().enumerate().take(3) {
+        let p = system.get_particle_by_index(i).expect("REASON");
+        p.update_particle_euler(*force, 0.1);
+        println!("Velocity result {:?}", p.velocity());
+        println!("     Pos result {:?}", p.pos());
+    }
 }
