@@ -1,5 +1,3 @@
-extern crate rand;
-
 use crate::gui::engine::NBodyEngine;
 use crate::types::particle::Particle;
 
