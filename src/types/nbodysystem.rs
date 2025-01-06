@@ -1,6 +1,7 @@
 use super::particle::Particle;
 use crate::physics::gravity::gravitational_force;
-use vecmath::{vec3_add, Vector3};
+use rayon::prelude::*;
+use vecmath::{vec3_add, vec3_neg, Vector3};
 
 #[derive(Default)]
 pub struct NBodySystem {
@@ -58,21 +59,43 @@ impl NBodySystem {
             return Default::default();
         }
 
-        let mut gravity_forces: Vec<Vector3<f64>> =
-            vec![Default::default(); self.m_particles.len()];
-        for (body1_counter, body1) in self.m_particles.iter().clone().enumerate() {
-            let mut body2_counter = body1_counter + 1;
-            for body2 in self.m_particles.iter().skip(body2_counter).clone() {
-                let gravy_force = gravitational_force(body1, body2);
-                gravity_forces[body1_counter] =
-                    vec3_add(gravity_forces[body1_counter], gravy_force);
-                gravity_forces[body2_counter] = vec3_add(
-                    gravity_forces[body2_counter],
-                    vecmath::vec3_neg(gravy_force),
-                );
-                body2_counter += 1;
-            }
-        }
-        gravity_forces
+        let particle_count = self.m_particles.len();
+
+        // Each thread calculates forces independently using a local vector (`local_forces`) to store intermediate results.
+        // This avoids contention on shared data structures (like Mutex or Atomic variables).
+        // After all threads complete their computations, the results from each thread's local vector are merged into a single global vector (`gravity_forces`) using Rayon’s `reduce` operation.
+        // This approach ensures thread safety and minimizes synchronization overhead, improving performance for large systems.
+        (0..particle_count)
+            .into_par_iter()
+            .map(|i| {
+                let mut force_on_i = Vector3::default();
+                let mut local_forces = vec![Vector3::default(); particle_count];
+
+                for (j, force_on_j) in local_forces
+                    .iter_mut()
+                    .enumerate()
+                    .take(particle_count)
+                    .skip(i + 1)
+                {
+                    let force = gravitational_force(&self.m_particles[i], &self.m_particles[j]);
+
+                    // Update local forces
+                    force_on_i = vec3_add(force_on_i, force);
+                    *force_on_j = vec3_add(*force_on_j, vec3_neg(force));
+                }
+                local_forces[i] = force_on_i;
+
+                local_forces
+            })
+            .reduce(
+                || vec![Vector3::default(); particle_count],
+                |mut acc, local_forces| {
+                    // Combine local results into a single vector
+                    for (i, force) in local_forces.into_iter().enumerate() {
+                        acc[i] = vec3_add(acc[i], force);
+                    }
+                    acc
+                },
+            )
     }
 }
