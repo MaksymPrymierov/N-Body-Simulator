@@ -31,7 +31,7 @@ fn main() {
     ));
 
     let forces = system.compute_all_forces();
-    println!("{:?}", forces);
+    println!("{forces:?}");
 
     for (i, force) in forces.iter().enumerate().take(3) {
         let p = system.get_particle_by_index(i).expect("REASON");
