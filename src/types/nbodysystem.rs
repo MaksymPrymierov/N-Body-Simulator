@@ -7,7 +7,6 @@ pub struct NBodySystem {
     m_particles: Vec<Particle>,
 }
 
-
 impl NBodySystem {
     pub fn add_particle(&mut self, particle: Particle) {
         self.m_particles.push(particle);
@@ -24,7 +23,9 @@ impl NBodySystem {
     }
 
     pub fn get_particle_by_id(&mut self, id: u64) -> Option<&mut Particle> {
-        self.m_particles.iter_mut().find(|particle| particle.id() == id)
+        self.m_particles
+            .iter_mut()
+            .find(|particle| particle.id() == id)
     }
 
     pub fn get_particle_by_index(&mut self, index: usize) -> Option<&mut Particle> {
