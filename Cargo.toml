@@ -9,4 +9,5 @@ authors = ["Maksym Prymierov <primerovmax@gmail.com>"]
 [dependencies]
 vecmath = "1.0"
 rand = "0.8"
-rayon = "1.10"
+rayon = "1.10.0"
+macroquad = "0.4.13"
