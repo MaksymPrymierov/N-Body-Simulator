@@ -1,13 +1,13 @@
 [package]
 name = "n-body-simulator"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 authors = ["Maksym Prymierov <primerovmax@gmail.com>"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-vecmath = "1.0"
-rand = "0.8"
+vecmath = "1.0.0"
+rand = "0.9.2"
 rayon = "1.10.0"
-macroquad = "0.4.13"
+macroquad = "0.4.14"
