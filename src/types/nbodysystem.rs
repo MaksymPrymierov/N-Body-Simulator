@@ -1,7 +1,7 @@
 use super::particle::Particle;
 use crate::physics::gravity::gravitational_force;
 use rayon::prelude::*;
-use vecmath::{vec3_add, vec3_neg, Vector3};
+use vecmath::{Vector3, vec3_add, vec3_neg};
 
 #[derive(Default)]
 pub struct NBodySystem {
