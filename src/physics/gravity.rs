@@ -1,9 +1,9 @@
 use crate::types::particle::Particle;
+use vecmath::Vector3;
 use vecmath::vec3_normalized;
 use vecmath::vec3_scale;
 use vecmath::vec3_square_len;
 use vecmath::vec3_sub;
-use vecmath::Vector3;
 
 // gravitational constant in SI units
 pub const G: f64 = 6.67430e-11;

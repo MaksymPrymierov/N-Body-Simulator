@@ -1,11 +1,11 @@
 extern crate rand;
 
-use crate::engine::engine::NBodyEngine;
+use crate::gui::engine::NBodyEngine;
 use crate::types::particle::Particle;
 
+pub mod gui;
 pub mod physics;
 pub mod types;
-pub mod engine;
 
 #[macroquad::main("N Body Problem")]
 async fn main() {

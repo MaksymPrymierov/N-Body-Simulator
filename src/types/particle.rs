@@ -1,4 +1,4 @@
-use vecmath::{vec3_add, vec3_scale, Vector3};
+use vecmath::{Vector3, vec3_add, vec3_scale};
 
 #[derive(Debug)]
 pub struct Particle {
