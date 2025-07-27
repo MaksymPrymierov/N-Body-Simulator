@@ -1,14 +1,38 @@
 use super::particle::Particle;
 use crate::physics::gravity::gravitational_force;
 use rayon::prelude::*;
+use tokio::sync::broadcast;
 use vecmath::{Vector3, vec3_add, vec3_neg};
 
-#[derive(Default)]
+#[derive(Clone)]
+pub enum NBodySignal {
+    LimitReached { particles: Vec<Particle> },
+}
+
 pub struct NBodySystem {
     m_particles: Vec<Particle>,
+    m_limit: u16,
+    m_step: u16,
+    signal_sender: broadcast::Sender<NBodySignal>,
+}
+
+impl Default for NBodySystem {
+    fn default() -> Self {
+        let (sender, _) = broadcast::channel(16);
+        Self {
+            m_particles: Vec::new(),
+            m_limit: 1000,
+            m_step: 0,
+            signal_sender: sender,
+        }
+    }
 }
 
 impl NBodySystem {
+    pub fn subscribe(&self) -> broadcast::Receiver<NBodySignal> {
+        self.signal_sender.subscribe()
+    }
+
     pub fn add_particle(&mut self, particle: Particle) {
         self.m_particles.push(particle);
     }
@@ -45,6 +69,10 @@ impl NBodySystem {
         self.m_particles.remove(index);
     }
 
+    pub fn remove_all_particles(&mut self) {
+        self.m_particles.clear();
+    }
+
     pub fn len(&self) -> usize {
         self.m_particles.len()
     }
@@ -53,11 +81,12 @@ impl NBodySystem {
         self.m_particles.is_empty()
     }
 
-    pub fn compute_all_forces(&self) -> Vec<Vector3<f64>> {
+    pub fn compute_all_forces(&mut self) -> Vec<Vector3<f64>> {
         if self.m_particles.is_empty() {
-            println!("No particles in system");
             return Default::default();
         }
+
+        self.check_limit_reached();
 
         let particle_count = self.m_particles.len();
 
@@ -97,5 +126,26 @@ impl NBodySystem {
                     acc
                 },
             )
+    }
+
+    pub fn set_limit(&mut self, limit: u16) {
+        self.m_limit = limit;
+    }
+
+    fn check_limit_reached(&mut self) {
+        self.m_step += 1;
+        if self.m_step >= self.m_limit {
+            self.m_step = 0;
+
+            let particles_copy = self
+                .m_particles
+                .par_iter()
+                .map(|p| p.clone())
+                .collect::<Vec<_>>();
+
+            let _ = self.signal_sender.send(NBodySignal::LimitReached {
+                particles: particles_copy,
+            });
+        }
     }
 }

@@ -1,6 +1,6 @@
 use vecmath::{Vector3, vec3_add, vec3_scale};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Particle {
     m_id: u64,
     m_position: Vector3<f64>,
