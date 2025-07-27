@@ -1,8 +1,11 @@
 use crate::gui::engine::NBodyEngine;
+use crate::terminal::cli::NBodyCli;
+use crate::types::nbodysystem::NBodySystem;
 use crate::types::particle::Particle;
 
 pub mod gui;
 pub mod physics;
+mod terminal;
 pub mod types;
 
 const MASS_CENTRAL: f64 = 1e11;
@@ -26,7 +29,12 @@ const PARTICLE_VEL: [f64; 3] = [0.1, 0.0, 0.0];
 
 #[macroquad::main("N Body Problem")]
 async fn main() {
-    let mut engine = NBodyEngine::new();
+    let mut system = NBodySystem::default();
+
+    let mut cli = NBodyCli::new(&mut system);
+    cli.handle_args().await;
+
+    let mut engine = NBodyEngine::new(&mut system);
 
     engine.add_particle(Particle::new(
         0,

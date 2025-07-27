@@ -18,23 +18,17 @@ const ZOOM_SENSITIVITY: f32 = 0.0001;
 const PARTICLE_RADIUS: f32 = 2.0;
 const TIME_STEP: f64 = 100.0;
 
-pub struct NBodyEngine {
-    m_system: NBodySystem,
+pub struct NBodyEngine<'a> {
+    m_system: &'a mut NBodySystem,
     m_zoom: f32,
     m_x: f32,
     m_y: f32,
 }
 
-impl Default for NBodyEngine {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl NBodyEngine {
-    pub fn new() -> Self {
+impl<'a> NBodyEngine<'a> {
+    pub fn new(nbody_system: &'a mut NBodySystem) -> Self {
         Self {
-            m_system: NBodySystem::default(),
+            m_system: nbody_system,
             m_zoom: DEFAULT_ZOOM,
             m_x: DEFAULT_X,
             m_y: DEFAULT_Y,
@@ -83,7 +77,7 @@ impl NBodyEngine {
             }
 
             if keys_pressed.contains(&KeyCode::R) {
-                self.m_system = NBodySystem::default();
+                self.m_system.remove_all_particles();
             }
 
             let wheel = mouse_wheel().1;
