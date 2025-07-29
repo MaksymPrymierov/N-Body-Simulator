@@ -2,13 +2,23 @@ use crate::types::nbodysystem::NBodySignal;
 use crate::types::nbodysystem::NBodySystem;
 use crate::types::particle::Particle;
 use clap::Parser;
+use serde::Serialize;
+use std::fs::File;
+use std::io::Write;
+
+#[derive(Serialize)]
+struct ParticleData {
+    id: u64,
+    position: [f64; 3],
+    velocity: [f64; 3],
+}
 
 /// N Body Problem
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 pub struct Args {
     /// Select the type of data output
-    #[arg(short, long, default_value = "none", value_parser = [ "none", "terminal", "plain_text", "csv"])]
+    #[arg(short, long, default_value = "none", value_parser = [ "none", "terminal", "plain_text", "csv", "json"])]
     output: String,
 
     /// Limit the output of information about particles to once every N steps
@@ -54,6 +64,10 @@ impl<'a> NBodyCli<'a> {
                         }
                         "csv" => {
                             let writer = create_csv_writer();
+                            writer(&particles, &file_name);
+                        }
+                        "json" => {
+                            let writer = create_json_writer();
                             writer(&particles, &file_name);
                         }
                         _ => println!("Incorrect output type"),
@@ -129,5 +143,24 @@ fn create_csv_writer() -> impl Fn(&Vec<Particle>, &String) + Send {
         }
 
         csv_output.flush().expect("Unable to flush file");
+    }
+}
+
+fn create_json_writer() -> impl Fn(&Vec<Particle>, &String) + Send {
+    move |particles: &Vec<Particle>, file_name: &String| {
+        println!("Write to file: {file_name}");
+        let particles_data: Vec<ParticleData> = particles
+            .iter()
+            .map(|particle| ParticleData {
+                id: particle.id(),
+                position: particle.pos(),
+                velocity: particle.velocity(),
+            })
+            .collect();
+
+        let json = serde_json::to_string_pretty(&particles_data).expect("Unable to serialize");
+        let mut file = File::create(file_name).expect("Unable to create file");
+        file.write_all(json.as_bytes())
+            .expect("Unable to write to file");
     }
 }
