@@ -8,7 +8,7 @@ use clap::Parser;
 #[command(version, about, long_about = None)]
 pub struct Args {
     /// Select the type of data output
-    #[arg(short, long, default_value = "none", value_parser = [ "none", "terminal", "plain_text"])]
+    #[arg(short, long, default_value = "none", value_parser = [ "none", "terminal", "plain_text", "csv"])]
     output: String,
 
     /// Limit the output of information about particles to once every N steps
@@ -52,6 +52,10 @@ impl<'a> NBodyCli<'a> {
                             let writer = create_plain_text_writer();
                             writer(&particles, &file_name);
                         }
+                        "csv" => {
+                            let writer = create_csv_writer();
+                            writer(&particles, &file_name);
+                        }
                         _ => println!("Incorrect output type"),
                     },
                 }
@@ -87,5 +91,43 @@ fn create_plain_text_writer() -> impl Fn(&Vec<Particle>, &String) + Send {
             .as_str();
         }
         std::fs::write(file_name.as_str(), output).expect("Unable to write to file");
+    }
+}
+
+fn create_csv_writer() -> impl Fn(&Vec<Particle>, &String) + Send {
+    move |particles: &Vec<Particle>, file_name: &String| {
+        println!("Write to file: {file_name}");
+        let mut csv_output = csv::Writer::from_path(file_name).expect("Unable to create file");
+
+        csv_output
+            .write_record([
+                "ID",
+                "Position_X",
+                "Position_Y",
+                "Position_Z",
+                "Velocity_X",
+                "Velocity_Y",
+                "Velocity_Z",
+            ])
+            .expect("Unable to write header");
+
+        for particle in particles {
+            let pos = particle.pos();
+            let vel = particle.velocity();
+
+            csv_output
+                .write_record(&[
+                    particle.id().to_string(),
+                    pos[0].to_string(),
+                    pos[1].to_string(),
+                    pos[2].to_string(),
+                    vel[0].to_string(),
+                    vel[1].to_string(),
+                    vel[2].to_string(),
+                ])
+                .expect("Unable to write record");
+        }
+
+        csv_output.flush().expect("Unable to flush file");
     }
 }
