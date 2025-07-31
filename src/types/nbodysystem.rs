@@ -66,7 +66,11 @@ impl NBodySystem {
     }
 
     pub fn remove_particle_by_index(&mut self, index: usize) {
-        self.m_particles.remove(index);
+        if index < self.m_particles.len() {
+            self.m_particles.remove(index);
+        } else {
+            println!("Index out of bounds");
+        }
     }
 
     pub fn remove_all_particles(&mut self) {
