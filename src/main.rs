@@ -11,7 +11,7 @@ pub mod types;
 const MASS_CENTRAL: f64 = 1e11;
 const MASS_SECOND: f64 = 5e7;
 const MASS_THIRD: f64 = 5e5;
-const MASS_NEGATIVE: f64 = -1e-16;
+const MASS_FOURTH: f64 = 5e2;
 
 const POS_CENTRAL: [f64; 3] = [1000.0, 500.0, 0.0];
 const POS_SECOND: [f64; 3] = [500.0, 500.0, 0.0];
@@ -64,7 +64,7 @@ async fn main() {
             position,
             PARTICLE_VEL,
             VEL_ZERO,
-            MASS_NEGATIVE,
+            MASS_FOURTH,
         ));
     }
 
