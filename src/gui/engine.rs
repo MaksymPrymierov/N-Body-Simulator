@@ -11,10 +11,13 @@ use macroquad::prelude::{
 const DEFAULT_ZOOM: f32 = 1000.0;
 const DEFAULT_X: f32 = 1000.0;
 const DEFAULT_Y: f32 = 850.0;
-const CAMERA_MOVE_SPEED: f32 = 1.0;
+const CAMERA_MOVE_SPEED: f32 = 5.0;
 const MIN_ZOOM: f32 = 100.0;
 const MAX_ZOOM: f32 = 10000.0;
-const ZOOM_SENSITIVITY: f32 = 0.0001;
+#[cfg(windows)]
+const ZOOM_SENSITIVITY: f32 = 0.0009;
+#[cfg(unix)]
+const ZOOM_SENSITIVITY: f32 = 0.09;
 const PARTICLE_RADIUS: f32 = 2.0;
 const TIME_STEP: f64 = 100.0;
 
