@@ -28,6 +28,18 @@ impl Default for NBodySystem {
     }
 }
 
+impl From<Vec<Particle>> for NBodySystem {
+    fn from(m_particles: Vec<Particle>) -> Self {
+        let (sender, _) = broadcast::channel(16);
+        Self {
+            m_limit: m_particles.len() as u16,
+            m_particles,
+            m_step: 0,
+            signal_sender: sender,
+        }
+    }
+}
+
 impl NBodySystem {
     pub fn subscribe(&self) -> broadcast::Receiver<NBodySignal> {
         self.signal_sender.subscribe()
