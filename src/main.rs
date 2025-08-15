@@ -29,44 +29,44 @@ const PARTICLE_VEL: [f64; 3] = [0.1, 0.0, 0.0];
 
 #[macroquad::main("N Body Problem")]
 async fn main() {
-    let mut system = NBodySystem::default();
+    let mut particles = Vec::with_capacity(PARTICLE_COUNT + 3);
 
-    let mut cli = NBodyCli::new(&mut system);
-    cli.handle_args().await;
-
-    let mut engine = NBodyEngine::new(&mut system);
-
-    engine.add_particle(Particle::new(
+    particles.push(Particle::new(
         0,
         POS_CENTRAL,
         VEL_ZERO,
         VEL_ZERO,
         MASS_CENTRAL,
     ));
-    engine.add_particle(Particle::new(
+    particles.push(Particle::new(
         1,
         POS_SECOND,
         VEL_SECOND,
         VEL_ZERO,
         MASS_SECOND,
     ));
-    engine.add_particle(Particle::new(2, POS_THIRD, VEL_THIRD, VEL_ZERO, MASS_THIRD));
+    particles.push(Particle::new(2, POS_THIRD, VEL_THIRD, VEL_ZERO, MASS_THIRD));
 
-    for i in 0..PARTICLE_COUNT {
+    particles.extend((3..PARTICLE_COUNT).map(|i| {
         let position = [
             PARTICLE_START_X + (i as f64 * PARTICLE_SPACING),
             PARTICLE_Y,
             0.0,
         ];
-
-        engine.add_particle(Particle::new(
-            (i + 3).try_into().unwrap(),
+        Particle::new(
+            i.try_into().unwrap(),
             position,
             PARTICLE_VEL,
             VEL_ZERO,
             MASS_FOURTH,
-        ));
-    }
+        )
+    }));
+    let mut system: NBodySystem = particles.into();
+
+    let mut cli = NBodyCli::new(&mut system);
+    cli.handle_args().await;
+
+    let mut engine = NBodyEngine::new(&mut system);
 
     engine.update().await;
 }
