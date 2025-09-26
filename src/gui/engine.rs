@@ -118,3 +118,53 @@ impl<'a> NBodyEngine<'a> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::types::nbodysystem::NBodySystem;
+    use crate::types::particle::Particle;
+
+    fn mk_particle(id: u64, pos: [f64; 3], mass: f64) -> Particle {
+        Particle::new(id, pos, [0.0, 0.0, 0.0], [0.0, 0.0, 0.0], mass)
+    }
+
+    #[test]
+    fn new_initializes_defaults() {
+        let mut sys = NBodySystem::default();
+        let engine = NBodyEngine::new(&mut sys);
+
+        assert!((engine.m_zoom - super::DEFAULT_ZOOM).abs() < f32::EPSILON);
+        assert!((engine.m_x - super::DEFAULT_X).abs() < f32::EPSILON);
+        assert!((engine.m_y - super::DEFAULT_Y).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn add_particle_delegates_to_system() {
+        let mut sys = NBodySystem::default();
+        let mut engine = NBodyEngine::new(&mut sys);
+
+        assert_eq!(engine.m_system.len(), 0);
+        engine.add_particle(mk_particle(1, [0.0, 0.0, 0.0], 1.0));
+        assert_eq!(engine.m_system.len(), 1);
+
+        engine.add_particle(mk_particle(2, [1.0, 0.0, 0.0], 2.0));
+        assert_eq!(engine.m_system.len(), 2);
+
+        let p0 = engine.m_system.get_particle_by_index(0).unwrap();
+        assert_eq!(p0.id(), 1);
+    }
+
+    #[test]
+    fn add_random_particle_delegates_to_system() {
+        let mut sys = NBodySystem::default();
+        let mut engine = NBodyEngine::new(&mut sys);
+
+        let before = engine.m_system.len();
+        engine.add_random_particle();
+        assert_eq!(engine.m_system.len(), before + 1);
+
+        engine.add_random_particle();
+        assert_eq!(engine.m_system.len(), before + 2);
+    }
+}
