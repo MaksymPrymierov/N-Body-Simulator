@@ -4,7 +4,7 @@ use rayon::prelude::*;
 use tokio::sync::broadcast;
 use vecmath::{Vector3, vec3_add, vec3_neg};
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum NBodySignal {
     LimitReached { particles: Vec<Particle> },
 }
@@ -162,6 +162,212 @@ impl NBodySystem {
             let _ = self.signal_sender.send(NBodySignal::LimitReached {
                 particles: particles_copy,
             });
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::physics::gravity::G;
+    use crate::types::particle::Particle;
+    use tokio::sync::broadcast::error::TryRecvError;
+    use vecmath::{
+        Vector3, vec3_add, vec3_neg, vec3_normalized, vec3_scale, vec3_square_len, vec3_sub,
+    };
+
+    const EPS: f64 = 1e-12;
+
+    fn mk_particle(id: u64, pos: Vector3<f64>, mass: f64) -> Particle {
+        Particle::new(id, pos, [0.0, 0.0, 0.0], [0.0, 0.0, 0.0], mass)
+    }
+
+    fn approx(a: f64, b: f64, eps: f64) -> bool {
+        (a - b).abs() <= eps
+    }
+    fn vapprox(a: Vector3<f64>, b: Vector3<f64>, eps: f64) -> bool {
+        approx(a[0], b[0], eps) && approx(a[1], b[1], eps) && approx(a[2], b[2], eps)
+    }
+    fn vmag(v: Vector3<f64>) -> f64 {
+        (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]).sqrt()
+    }
+
+    fn compute_forces_serial(parts: &[Particle]) -> Vec<Vector3<f64>> {
+        let n = parts.len();
+        let mut forces = vec![[0.0, 0.0, 0.0]; n];
+        for i in 0..n {
+            for j in (i + 1)..n {
+                let r_vec = vec3_sub(parts[j].pos(), parts[i].pos());
+                let dist_sq = vec3_square_len::<f64>(r_vec);
+                if dist_sq < f64::EPSILON {
+                    continue;
+                }
+                let f_mag = G * (parts[i].mass() * parts[j].mass()) / dist_sq;
+                let dir = vec3_normalized::<f64>(r_vec);
+                let f = vec3_scale::<f64>(dir, f_mag);
+                forces[i] = vec3_add(forces[i], f);
+                forces[j] = vec3_add(forces[j], vec3_neg(f));
+            }
+        }
+        forces
+    }
+
+    #[test]
+    fn default_is_empty_and_forces_empty() {
+        let mut sys = NBodySystem::default();
+        assert_eq!(sys.len(), 0);
+        assert!(sys.is_empty());
+
+        let f = sys.compute_all_forces();
+        assert!(f.is_empty());
+    }
+
+    #[test]
+    fn from_vec_initializes_len_and_limit() {
+        let parts = vec![
+            mk_particle(1, [0.0, 0.0, 0.0], 1.0),
+            mk_particle(2, [1.0, 0.0, 0.0], 1.0),
+            mk_particle(3, [0.0, 1.0, 0.0], 1.0),
+        ];
+        let sys = NBodySystem::from(parts.clone());
+        assert_eq!(sys.len(), 3);
+    }
+
+    #[test]
+    fn add_get_remove_particles_work() {
+        let mut sys = NBodySystem::default();
+
+        let p1 = mk_particle(1, [0.0, 0.0, 0.0], 2.0);
+        let p2 = mk_particle(2, [1.0, 0.0, 0.0], 3.0);
+
+        sys.add_particle(p1);
+        sys.add_particle(p2);
+
+        assert_eq!(sys.len(), 2);
+        assert!(!sys.is_empty());
+
+        let got2 = sys.get_particle_by_id(2).unwrap();
+        assert!(approx(got2.mass(), 3.0, EPS));
+
+        let got0 = sys.get_particle_by_index(0).unwrap();
+        assert!(vapprox(got0.pos(), [0.0, 0.0, 0.0], EPS));
+
+        sys.remove_particle_by_id(1);
+        assert_eq!(sys.len(), 1);
+        assert!(sys.get_particle_by_id(1).is_none());
+
+        sys.remove_particle_by_index(0);
+        assert_eq!(sys.len(), 0);
+
+        sys.remove_particle_by_index(123);
+        assert_eq!(sys.len(), 0);
+    }
+
+    #[test]
+    fn add_random_particle_returns_existing_id_and_increments_len() {
+        let mut sys = NBodySystem::default();
+        let before = sys.len();
+        let new_id = sys.add_random_particle();
+        assert_eq!(sys.len(), before + 1);
+        assert!(sys.get_particle_by_id(new_id).is_some());
+    }
+
+    #[test]
+    fn single_particle_has_zero_force() {
+        let mut sys = NBodySystem::default();
+        sys.add_particle(mk_particle(1, [0.0, 0.0, 0.0], 5.0));
+        let f = sys.compute_all_forces();
+        assert_eq!(f.len(), 1);
+        assert!(vapprox(f[0], [0.0, 0.0, 0.0], 1e-18));
+    }
+
+    #[test]
+    fn two_particles_newtons_third_law_and_expected_magnitude() {
+        let mut sys = NBodySystem::default();
+        let m1 = 2.0;
+        let m2 = 3.0;
+        let r = 1.0;
+        sys.add_particle(mk_particle(1, [0.0, 0.0, 0.0], m1));
+        sys.add_particle(mk_particle(2, [r, 0.0, 0.0], m2));
+
+        let f = sys.compute_all_forces();
+        assert_eq!(f.len(), 2);
+
+        let expected_mag = G * m1 * m2 / (r * r);
+        assert!(approx(vmag(f[0]), expected_mag, 1e-18));
+        assert!(vapprox(f[1], vec3_neg(f[0]), 1e-18));
+    }
+
+    #[test]
+    fn parallel_algorithm_matches_serial_for_three_particles() {
+        let parts = vec![
+            mk_particle(1, [0.0, 0.0, 0.0], 2.0),
+            mk_particle(2, [1.0, 0.0, 0.0], 3.0),
+            mk_particle(3, [0.0, 1.0, 0.0], 4.0),
+        ];
+        let mut sys = NBodySystem::from(parts.clone());
+
+        let par = sys.compute_all_forces();
+        let ser = compute_forces_serial(&parts);
+
+        assert_eq!(par.len(), ser.len());
+        for i in 0..par.len() {
+            assert!(
+                vapprox(par[i], ser[i], 1e-12),
+                "i={i}, par={:?}, ser={:?}",
+                par[i],
+                ser[i]
+            );
+        }
+    }
+
+    #[test]
+    fn total_force_is_zero() {
+        let mut sys = NBodySystem::default();
+        sys.add_particle(mk_particle(1, [0.0, 0.0, 0.0], 5.0));
+        sys.add_particle(mk_particle(2, [1.0, 0.0, 0.0], 7.0));
+        sys.add_particle(mk_particle(3, [0.0, 2.0, 0.0], 4.0));
+
+        let f = sys.compute_all_forces();
+        let total = f
+            .into_iter()
+            .fold([0.0, 0.0, 0.0], |acc, v| vec3_add(acc, v));
+        assert!(vapprox(total, [0.0, 0.0, 0.0], 1e-10));
+    }
+
+    #[test]
+    fn emits_limit_reached_with_particles_snapshot() {
+        let mut sys = NBodySystem::default();
+        sys.add_particle(mk_particle(1, [0.0, 0.0, 0.0], 5.0));
+        sys.add_particle(mk_particle(2, [1.0, 0.0, 0.0], 7.0));
+        sys.add_particle(mk_particle(3, [0.0, 2.0, 0.0], 4.0));
+
+        let mut rx = sys.subscribe();
+        sys.set_limit(2);
+
+        let _ = sys.compute_all_forces();
+        match rx.try_recv() {
+            Err(TryRecvError::Empty) => {}
+            other => panic!("unexpected receive on step 1: {:?}", other),
+        }
+
+        let _ = sys.compute_all_forces();
+        match rx.try_recv() {
+            Ok(NBodySignal::LimitReached { particles }) => {
+                assert_eq!(particles.len(), sys.len());
+                let ids_src: Vec<u64> = (0..sys.len())
+                    .map(|i| sys.get_particle_by_index(i).unwrap().id())
+                    .collect();
+                let ids_msg: Vec<u64> = particles.iter().map(|p| p.id()).collect();
+                assert_eq!(ids_src, ids_msg);
+            }
+            Err(e) => panic!("expected LimitReached, got error: {:?}", e),
+        }
+
+        let _ = sys.compute_all_forces();
+        match rx.try_recv() {
+            Err(TryRecvError::Empty) => {}
+            other => panic!("unexpected receive after reset: {:?}", other),
         }
     }
 }
