@@ -208,7 +208,7 @@ mod tests {
         let force = [2.0, -4.0, 6.0];
 
         let mut p = Particle::new(id, pos0, vel0, acc0, mass);
-        
+
         let a = vec3_scale(force, 1.0 / mass);
         let v1 = vec3_add(vel0, vec3_scale(a, dt));
         let x1 = vec3_add(pos0, vec3_scale(v1, dt));
