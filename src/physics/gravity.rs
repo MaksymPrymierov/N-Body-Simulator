@@ -5,10 +5,37 @@ use vecmath::vec3_scale;
 use vecmath::vec3_square_len;
 use vecmath::vec3_sub;
 
-// gravitational constant in SI units
+/// Universal gravitational constant `G` in SI units (m³·kg⁻¹·s⁻²).
+///
+/// Value from CODATA 2018: `6.67430e-11`
 pub const G: f64 = 6.67430e-11;
 
-// The force of interaction between two bodies is directly proportional to the mass of each body F = G * (m1 * m2) / r^2
+/// Computes the gravitational force **on `p1` due to `p2`**.
+///
+/// Uses the inverse-square law:
+/// `F = G * (m1 * m2) / r²` along the direction from `p1` to `p2`.
+///
+/// # Parameters
+/// - `p1`: particle experiencing the force.
+/// - `p2`: source particle applying the gravitational pull.
+///
+/// # Returns
+/// A 3D force vector acting on `p1`. If the two particles occupy the same
+/// position (distance squared `< f64::EPSILON`), returns the zero vector to
+/// avoid division by zero.
+///
+/// # Units
+/// Assumes SI-like units: meters (position), seconds (time), kilograms (mass),
+/// and Newtons for the returned force.
+///
+/// # Notes
+/// - The returned vector satisfies Newton’s third law when used symmetrically:
+///   `F(p1←p2) = -F(p2←p1)`.
+/// - No softening term is applied; extreme masses/close separations may require
+///   a softening strategy in a real simulation to improve stability.
+///
+/// # Complexity
+/// O(1) for a single pair evaluation.
 pub fn gravitational_force(p1: &Particle, p2: &Particle) -> Vector3<f64> {
     // vector from p1 to p2
     let r_vec = vec3_sub::<f64>(p2.pos(), p1.pos());

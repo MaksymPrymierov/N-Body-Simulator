@@ -4,11 +4,27 @@ use rayon::prelude::*;
 use tokio::sync::broadcast;
 use vecmath::{Vector3, vec3_add, vec3_neg};
 
+/// Signals emitted by the n-body system.
+///
+/// Currently used to publish periodic snapshots of the particle set
+/// when the step counter reaches the configured `limit`.
 #[derive(Clone, Debug)]
 pub enum NBodySignal {
+    /// Emitted when the internal step counter reaches `limit`.
+    /// Carries a snapshot (deep copy) of all current particles.
     LimitReached { particles: Vec<Particle> },
 }
 
+/// Parallel n-body container and force calculator.
+///
+/// `NBodySystem` owns a dynamic list of [`Particle`]s and can compute
+/// the net gravitational force acting on each particle using a
+/// pairwise all-pairs algorithm. The computation is parallelized with
+/// Rayon and preserves Newton’s third law by accumulating ±F for each pair.
+///
+/// It also exposes a simple tick counter that emits a [`NBodySignal::LimitReached`]
+/// message via a Tokio `broadcast` channel every `limit` calls to
+/// `compute_all_forces`.
 pub struct NBodySystem {
     m_particles: Vec<Particle>,
     m_limit: u16,
@@ -17,6 +33,10 @@ pub struct NBodySystem {
 }
 
 impl Default for NBodySystem {
+    /// Creates an empty system with:
+    /// - `limit = 1000` steps,
+    /// - step counter set to `0`,
+    /// - broadcast channel capacity of 16 messages.
     fn default() -> Self {
         let (sender, _) = broadcast::channel(16);
         Self {
@@ -29,6 +49,9 @@ impl Default for NBodySystem {
 }
 
 impl From<Vec<Particle>> for NBodySystem {
+    /// Builds a system from an initial particle list.
+    ///
+    /// The `limit` is initialized to `particles.len()` (clamped to `u16`).
     fn from(m_particles: Vec<Particle>) -> Self {
         let (sender, _) = broadcast::channel(16);
         Self {
@@ -41,14 +64,25 @@ impl From<Vec<Particle>> for NBodySystem {
 }
 
 impl NBodySystem {
+    /// Subscribes to system signals.
+    ///
+    /// Returns a `broadcast::Receiver` that will receive
+    /// [`NBodySignal::LimitReached`] once every `limit` calls to
+    /// `compute_all_forces`.
     pub fn subscribe(&self) -> broadcast::Receiver<NBodySignal> {
         self.signal_sender.subscribe()
     }
 
+    /// Appends a particle to the system.
     pub fn add_particle(&mut self, particle: Particle) {
         self.m_particles.push(particle);
     }
 
+    /// Generates and appends a random particle.
+    ///
+    /// Returns the id of the newly inserted particle.
+    ///
+    /// See [`Particle::generate_random`] for sampling details.
     pub fn add_random_particle(&mut self) -> u64 {
         let particle: Particle = Particle::generate_random();
 
@@ -59,12 +93,16 @@ impl NBodySystem {
         part_id
     }
 
+    /// Finds a mutable reference to a particle by its id.
+    ///
+    /// Returns `None` if no particle with such id exists.
     pub fn get_particle_by_id(&mut self, id: u64) -> Option<&mut Particle> {
         self.m_particles
             .iter_mut()
             .find(|particle| particle.id() == id)
     }
 
+    /// Returns a mutable reference to the particle at `index`, if present.
     pub fn get_particle_by_index(&mut self, index: usize) -> Option<&mut Particle> {
         if index >= self.m_particles.len() {
             return None;
@@ -73,10 +111,14 @@ impl NBodySystem {
         Some(&mut self.m_particles[index])
     }
 
+    /// Removes the particle with the specified id (if it exists).
     pub fn remove_particle_by_id(&mut self, id: u64) {
         self.m_particles.retain(|value: &Particle| value.id() != id);
     }
 
+    /// Removes the particle by positional index.
+    ///
+    /// If `index` is out of bounds, this is a no-op (logs to stdout).
     pub fn remove_particle_by_index(&mut self, index: usize) {
         if index < self.m_particles.len() {
             self.m_particles.remove(index);
@@ -85,18 +127,37 @@ impl NBodySystem {
         }
     }
 
+    /// Removes all particles from the system.
     pub fn remove_all_particles(&mut self) {
         self.m_particles.clear();
     }
 
+    /// Returns the number of particles.
     pub fn len(&self) -> usize {
         self.m_particles.len()
     }
 
+    /// Returns `true` if there are no particles.
     pub fn is_empty(&self) -> bool {
         self.m_particles.is_empty()
     }
 
+    /// Computes the net gravitational force on every particle.
+    ///
+    /// # Returns
+    /// A vector `F` of length `self.len()`, where `F[i]` is the net force
+    /// acting on particle `i`. If the system is empty, an empty vector is returned.
+    ///
+    /// # Algorithm
+    /// - Work is split across threads with Rayon.
+    /// - Each worker builds a local force buffer to avoid contention,
+    ///   enforcing Newton’s third law by adding `+F` to `i` and `−F` to `j`
+    ///   for every pair `(i, j)`, `j > i`.
+    /// - Local buffers are reduced (summed) into the final result.
+    ///
+    /// # Events
+    /// Increments an internal step counter and may emit
+    /// [`NBodySignal::LimitReached`] when the configured `limit` is reached.
     pub fn compute_all_forces(&mut self) -> Vec<Vector3<f64>> {
         if self.m_particles.is_empty() {
             return Default::default();
@@ -144,10 +205,25 @@ impl NBodySystem {
             )
     }
 
+    /// Sets the emission limit (in **compute steps**).
+    ///
+    /// After every call to `compute_all_forces`, an internal counter
+    /// is incremented. When the counter reaches `limit`, a
+    /// [`NBodySignal::LimitReached`] is broadcast with a snapshot of
+    /// all particles, and the counter is reset to `0`.
+    ///
+    /// # Configuration
+    /// Treat `limit` as a coarse “output frequency” in units of compute steps.
+    /// For example, if your integrator performs one force evaluation per time
+    /// step `dt`, then signals are emitted approximately every `limit * dt`
+    /// seconds of simulated time.
     pub fn set_limit(&mut self, limit: u16) {
         self.m_limit = limit;
     }
 
+    /// Increments the step counter and emits a snapshot when `limit` is reached.
+    ///
+    /// Not public: called automatically by [`compute_all_forces`].
     fn check_limit_reached(&mut self) {
         self.m_step += 1;
         if self.m_step >= self.m_limit {
