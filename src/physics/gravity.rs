@@ -129,4 +129,14 @@ mod tests {
             "Directions differ: {dir_r:?} vs {dir_2r:?}"
         );
     }
+
+    #[test]
+    fn force_is_zero_when_particles_overlap() {
+        let p1 = Particle::new(1, [0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0], 5.0);
+        let p2 = Particle::new(2, [0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0], 10.0);
+
+        let f = gravitational_force(&p1, &p2);
+
+        assert_eq!(f, [0.0, 0.0, 0.0], "Force must be zero at r=0");
+    }
 }
