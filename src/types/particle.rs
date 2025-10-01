@@ -27,8 +27,12 @@ impl Particle {
         pos: Vector3<f64>,
         velocity: Vector3<f64>,
         acceleration: Vector3<f64>,
-        mass: f64,
+        mut mass: f64,
     ) -> Self {
+        if mass < 0.0 {
+            println!("mass must be > 0");
+            mass = 0.1;
+        }
         Self {
             m_id: id,
             m_position: pos,
@@ -60,7 +64,7 @@ impl Particle {
             m_position: rand_pos,
             m_velocity: rand_velocity,
             m_acceleration: rand_acceleration,
-            m_mass: rand::random(),
+            m_mass: rand::random::<f64>().max(f64::MAX).min(f64::MIN_POSITIVE),
         }
     }
 
@@ -105,6 +109,7 @@ impl Particle {
     }
 
     pub fn update_particle_euler(&mut self, force: Vector3<f64>, dt: f64) {
+        assert!(self.m_mass > 0.0, "mass must be > 0");
         self.m_velocity = vec3_add(
             self.m_velocity,
             vec3_scale(vec3_scale(force, 1.0 / self.m_mass), dt),
@@ -166,16 +171,16 @@ mod tests {
         let p = Particle::generate_random();
 
         for c in p.pos() {
-            assert!(c >= 0.0 && c < 1.0, "pos component out of [0,1): {}", c);
+            assert!((0.0..1.0).contains(&c), "pos component out of [0,1): {c}");
         }
         for c in p.velocity() {
-            assert!(c >= 0.0 && c < 1.0, "vel component out of [0,1): {}", c);
+            assert!((0.0..1.0).contains(&c), "vel component out of [0,1): {c}");
         }
         for c in p.acceleration() {
-            assert!(approx(c, 0.0, EPS), "acc component not zero: {}", c);
+            assert!(approx(c, 0.0, EPS), "acc component not zero: {c}");
         }
         let m = p.mass();
-        assert!(m >= 0.0 && m < 1.0, "mass out of [0,1): {}", m);
+        assert!((0.0..1.0).contains(&m), "mass out of [0,1): {m}");
     }
 
     #[test]
@@ -227,5 +232,21 @@ mod tests {
             p.pos(),
             x1
         );
+    }
+
+    #[test]
+    fn generate_random_always_positive_mass() {
+        for _ in 0..1000 {
+            let p = Particle::generate_random();
+            assert!(p.mass() > 0.0, "random mass must be > 0");
+        }
+    }
+
+    #[test]
+    #[should_panic(expected = "mass must be > 0")]
+    fn euler_update_panics_if_mass_non_positive() {
+        let mut p = Particle::new(3, [0.0, 0.0, 0.0], [0.0; 3], [0.0; 3], 1.0);
+        *p.mass_mut() = 0.0;
+        p.update_particle_euler([1.0, 0.0, 0.0], 0.1);
     }
 }
