@@ -29,8 +29,8 @@ impl Particle {
         acceleration: Vector3<f64>,
         mut mass: f64,
     ) -> Self {
-        if mass < 0.0 {
-            println!("mass must be > 0");
+        if mass <= 0.0 {
+            eprintln!("mass must be > 0");
             mass = 0.1;
         }
         Self {
@@ -64,7 +64,7 @@ impl Particle {
             m_position: rand_pos,
             m_velocity: rand_velocity,
             m_acceleration: rand_acceleration,
-            m_mass: rand::random::<f64>().max(f64::MAX).min(f64::MIN_POSITIVE),
+            m_mass: rand::random::<f64>().clamp(f64::MIN_POSITIVE, 1.0),
         }
     }
 
