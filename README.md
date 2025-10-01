@@ -2,8 +2,10 @@
 
 # N-Body Simulator
 
-A Rust implementation of the N-body problem with real-time visualization using [macroquad](https://github.com/not-fl3/macroquad).  
+A Rust implementation of the N-body problem, featuring real-time visualization using [macroquad](https://github.com/not-fl3/macroquad).  
 The project simulates gravitational interactions between particles, updates their states via numerical integration, and supports both CLI logging and interactive rendering.
+
+https://github.com/user-attachments/assets/5813a521-858d-400a-af17-99c9ed7d1b44
 
 ## 🔧 Features
 - Newtonian gravity: *F = G·m₁·m₂ / r²* (direction along the unit vector from one body to another).
@@ -11,7 +13,7 @@ The project simulates gravitational interactions between particles, updates thei
 - Parallel force computation with **rayon**.
 - Real-time visualization with **macroquad** (WASD to pan, mouse wheel to zoom, space to add new random particle).
 - CLI output modes: `none`, `terminal`, `plain_text`, `csv`, `json`.
-- Signals via `tokio::sync::broadcast` to throttle/log snapshots every *N* steps.
+- Broadcast channel via `tokio::sync::broadcast` to throttle and log snapshots every *N* steps.
 - Test suite:
     - **Unit tests** for `particle`, `gravity`, `nbodysystem`, CLI writers.
     - **Integration tests** for orbital stability, energy drift, and multi-body behavior with varying `dt`.
@@ -27,22 +29,22 @@ The project simulates gravitational interactions between particles, updates thei
 
 ## ▶️ Run the Simulation
 ### Build & run (release recommended)
-~~~bash
+```bash
 cargo run --release
-~~~
+```
 
 ### CLI options
-~~~bash
+```bash
 cargo run -- --help
-~~~
+```
 Example:
-~~~bash
+```bash
 cargo run -- --output csv --file results.csv --limit 500
-~~~
+```
 
 ### In-app controls (macroquad)
-- **W/A/S/D** — pan camera
-- **Mouse wheel** — zoom (clamped between MIN_ZOOM and MAX_ZOOM)
+- **W/A/S/D** — pan the camera
+- **Mouse wheel** — zoom (clamped between `MIN_ZOOM` and `MAX_ZOOM`)
 - **Space** — add a random particle
 - **R** — remove all particles
 - Fullscreen is enabled at startup
@@ -51,14 +53,14 @@ cargo run -- --output csv --file results.csv --limit 500
 
 ## 🧪 Running Tests
 Run all tests:
-~~~bash
+```bash
 cargo test
-~~~
+```
 
 Run only the orbital integration tests and show logs:
-~~~bash
+```bash
 cargo test --test orbit_integration -- --nocapture
-~~~
+```
 
 ---
 
