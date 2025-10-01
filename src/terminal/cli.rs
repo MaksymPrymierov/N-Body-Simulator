@@ -30,12 +30,21 @@ pub struct Args {
     file: String,
 }
 
+/// Minimal CLI façade around an [`NBodySystem`].
+///
+/// `NBodyCli` parses CLI args, configures the system (notably the `limit`),
+/// subscribes to [`NBodySignal`] events, and routes emitted particle snapshots
+/// to the selected output sink (terminal, plain text, CSV, or JSON).
 pub struct NBodyCli<'a> {
     m_args: Args,
     m_n_body_system: &'a mut NBodySystem,
 }
 
 impl<'a> NBodyCli<'a> {
+    /// Parses CLI arguments and binds this CLI to a given `NBodySystem`.
+    ///
+    /// The system is borrowed mutably so the CLI can adjust configuration
+    /// (e.g., `limit`) and drive the subscription lifecycle.
     pub fn new(n_body_system: &'a mut NBodySystem) -> Self {
         Self {
             m_args: Args::parse(),
@@ -43,6 +52,21 @@ impl<'a> NBodyCli<'a> {
         }
     }
 
+    /// Applies CLI configuration and spawns a background listener for snapshots.
+    ///
+    /// Behavior:
+    /// - Sets `NBodySystem::set_limit(self.m_args.limit)`.
+    /// - Subscribes to [`NBodySignal::LimitReached`].
+    /// - Spawns a thread that blocks on the receiver and, on each snapshot,
+    ///   writes particle data according to `--output`:
+    ///   - `terminal` → stdout print
+    ///   - `plain_text` → text file (`--file`)
+    ///   - `csv` → CSV file (`--file`)
+    ///   - `json` → JSON file (`--file`)
+    ///
+    /// This function returns immediately; the spawned thread keeps running
+    /// while the receiver is alive. Callers typically drive the simulation by
+    /// invoking `compute_all_forces` in a loop elsewhere.
     pub async fn handle_args(&mut self) {
         self.m_n_body_system.set_limit(self.m_args.limit);
         let mut receiver = self.m_n_body_system.subscribe();
@@ -78,6 +102,9 @@ impl<'a> NBodyCli<'a> {
     }
 }
 
+/// Returns a closure that prints per-particle lines to stdout.
+///
+/// Format: `Particle: [ID] POS: [x,y,z]; Velocity: [vx,vy,vz];`
 fn create_terminal_writer() -> impl Fn(&Vec<Particle>) + Send {
     move |particles: &Vec<Particle>| {
         for particle in particles {
@@ -91,6 +118,9 @@ fn create_terminal_writer() -> impl Fn(&Vec<Particle>) + Send {
     }
 }
 
+/// Returns a closure that writes a simple human-readable text file.
+///
+/// Each line contains a particle id, position and velocity. Overwrites `file_name`.
 fn create_plain_text_writer() -> impl Fn(&Vec<Particle>, &String) + Send {
     move |particles: &Vec<Particle>, file_name: &String| {
         let mut output = String::new();
@@ -108,6 +138,10 @@ fn create_plain_text_writer() -> impl Fn(&Vec<Particle>, &String) + Send {
     }
 }
 
+/// Returns a closure that writes a CSV file with header.
+///
+/// Columns: `ID, Position_X, Position_Y, Position_Z, Velocity_X, Velocity_Y, Velocity_Z`.
+/// Overwrites `file_name`.
 fn create_csv_writer() -> impl Fn(&Vec<Particle>, &String) + Send {
     move |particles: &Vec<Particle>, file_name: &String| {
         println!("Write to file: {file_name}");
@@ -146,6 +180,10 @@ fn create_csv_writer() -> impl Fn(&Vec<Particle>, &String) + Send {
     }
 }
 
+/// Returns a closure that writes a pretty-printed JSON array of particles.
+///
+/// Schema per element: `{ "id": u64, "position": [f64;3], "velocity": [f64;3] }`.
+/// Overwrites `file_name`.
 fn create_json_writer() -> impl Fn(&Vec<Particle>, &String) + Send {
     move |particles: &Vec<Particle>, file_name: &String| {
         println!("Write to file: {file_name}");

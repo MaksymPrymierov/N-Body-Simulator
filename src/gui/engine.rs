@@ -8,19 +8,48 @@ use macroquad::prelude::{
     clear_background, draw_circle, next_frame, screen_height, screen_width, set_fullscreen,
 };
 
+// --- Configuration parameters (rendering / integration) ---
+// These are internal constants; adjust to tune the visualization.
+
+// Default camera zoom and target position in world coordinates.
 const DEFAULT_ZOOM: f32 = 1000.0;
 const DEFAULT_X: f32 = 1000.0;
 const DEFAULT_Y: f32 = 850.0;
+
+// Camera panning speed factor (scaled by current zoom & screen size).
 const CAMERA_MOVE_SPEED: f32 = 5.0;
+
+// Zoom bounds (smaller -> more zoom-in).
 const MIN_ZOOM: f32 = 100.0;
 const MAX_ZOOM: f32 = 10000.0;
+
+// Scroll-wheel zoom sensitivity (platform-specific).
 #[cfg(windows)]
 const ZOOM_SENSITIVITY: f32 = 0.0009;
 #[cfg(unix)]
 const ZOOM_SENSITIVITY: f32 = 0.09;
+
+// Radius of drawn particles in pixels.
 const PARTICLE_RADIUS: f32 = 2.0;
+
+/// Integration time step `dt` (simulation seconds per frame).
+///
+/// This is the **configuration parameter** that controls stability/accuracy of
+/// the explicit Euler update used by `Particle::update_particle_euler`.
+/// Larger values advance time faster but can cause instability or energy drift.
 const TIME_STEP: f64 = 100.0;
 
+/// Real-time visualization and driver for an [`NBodySystem`].
+///
+/// `NBodyEngine` owns a mutable reference to the system, exposes a minimal camera
+/// (pan with **W/A/S/D**, zoom with mouse wheel), and advances the simulation
+/// once per frame with a fixed time step (`TIME_STEP`).
+///
+/// UI bindings:
+/// - **Space**: add a random particle
+/// - **R**:     remove all particles
+/// - **W/A/S/D**: pan camera
+/// - Mouse wheel: zoom (clamped to `[MIN_ZOOM, MAX_ZOOM]`)
 pub struct NBodyEngine<'a> {
     m_system: &'a mut NBodySystem,
     m_zoom: f32,
@@ -29,6 +58,9 @@ pub struct NBodyEngine<'a> {
 }
 
 impl<'a> NBodyEngine<'a> {
+    /// Creates a new engine bound to an existing [`NBodySystem`].
+    ///
+    /// Camera starts at (`DEFAULT_X`, `DEFAULT_Y`) with `DEFAULT_ZOOM`.
     pub fn new(nbody_system: &'a mut NBodySystem) -> Self {
         Self {
             m_system: nbody_system,
@@ -38,19 +70,36 @@ impl<'a> NBodyEngine<'a> {
         }
     }
 
+    /// Adds a particle to the underlying system.
     pub fn add_particle(&mut self, particle: Particle) {
         self.m_system.add_particle(particle);
     }
 
+    /// Adds a randomly initialized particle to the system.
+    ///
+    /// See [`Particle::generate_random`] for sampling details.
     pub fn add_random_particle(&mut self) {
         self.m_system.add_random_particle();
     }
 
+    /// Initializes the fullscreen window and clears the background.
+    ///
+    /// Call this once before entering `update`.
     pub fn create_window(&mut self) {
         set_fullscreen(true);
         clear_background(BLACK);
     }
 
+    /// Main render/update loop.
+    ///
+    /// Per frame:
+    /// 1. Handles input (pan/zoom and hotkeys).
+    /// 2. Sets the `Camera2D` based on current pan/zoom.
+    /// 3. Computes all forces via `NBodySystem::compute_all_forces`.
+    /// 4. Applies a single explicit Euler step with `TIME_STEP`.
+    /// 5. Draws each particle as a white circle at its `(x, y)` world position.
+    ///
+    /// The loop yields to the runtime with `next_frame().await`.
     pub async fn update(&mut self) {
         loop {
             clear_background(BLACK);
