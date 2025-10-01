@@ -329,9 +329,7 @@ mod tests {
         sys.add_particle(mk_particle(3, [0.0, 2.0, 0.0], 4.0));
 
         let f = sys.compute_all_forces();
-        let total = f
-            .into_iter()
-            .fold([0.0, 0.0, 0.0], |acc, v| vec3_add(acc, v));
+        let total = f.into_iter().fold([0.0, 0.0, 0.0], vec3_add);
         assert!(vapprox(total, [0.0, 0.0, 0.0], 1e-10));
     }
 
@@ -348,7 +346,7 @@ mod tests {
         let _ = sys.compute_all_forces();
         match rx.try_recv() {
             Err(TryRecvError::Empty) => {}
-            other => panic!("unexpected receive on step 1: {:?}", other),
+            other => panic!("unexpected receive on step 1: {other:?}"),
         }
 
         let _ = sys.compute_all_forces();
@@ -361,13 +359,13 @@ mod tests {
                 let ids_msg: Vec<u64> = particles.iter().map(|p| p.id()).collect();
                 assert_eq!(ids_src, ids_msg);
             }
-            Err(e) => panic!("expected LimitReached, got error: {:?}", e),
+            Err(e) => panic!("expected LimitReached, got error: {e:?}"),
         }
 
         let _ = sys.compute_all_forces();
         match rx.try_recv() {
             Err(TryRecvError::Empty) => {}
-            other => panic!("unexpected receive after reset: {:?}", other),
+            other => panic!("unexpected receive after reset: {other:?}"),
         }
     }
 
