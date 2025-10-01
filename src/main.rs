@@ -1,12 +1,7 @@
-use crate::gui::engine::NBodyEngine;
-use crate::terminal::cli::NBodyCli;
-use crate::types::nbodysystem::NBodySystem;
-use crate::types::particle::Particle;
-
-pub mod gui;
-pub mod physics;
-mod terminal;
-pub mod types;
+use n_body_simulator::gui::engine::NBodyEngine;
+use n_body_simulator::terminal::cli::NBodyCli;
+use n_body_simulator::types::nbodysystem::NBodySystem;
+use n_body_simulator::types::particle::Particle;
 
 const MASS_CENTRAL: f64 = 1e11;
 const MASS_SECOND: f64 = 5e7;
