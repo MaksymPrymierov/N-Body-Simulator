@@ -370,4 +370,61 @@ mod tests {
             other => panic!("unexpected receive after reset: {:?}", other),
         }
     }
+
+    #[test]
+    fn real_world_reference_earth_moon_and_sun_earth() {
+        use crate::physics::gravity::G;
+
+        const M_EARTH: f64 = 5.972e24;
+        const M_MOON: f64 = 7.342e22;
+        const D_EM: f64 = 384_400_000.0;
+
+        const M_SUN: f64 = 1.9885e30;
+        const D_SE: f64 = 149_597_870_700.0;
+
+        fn mk(id: u64, pos: [f64; 3], mass: f64) -> Particle {
+            Particle::new(id, pos, [0.0, 0.0, 0.0], [0.0, 0.0, 0.0], mass)
+        }
+        fn vmag(v: [f64; 3]) -> f64 {
+            (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]).sqrt()
+        }
+        fn rel_close(a: f64, b: f64, rel: f64) -> bool {
+            let denom = b.abs().max(1.0);
+            ((a - b) / denom).abs() <= rel
+        }
+
+        let cases = [(M_EARTH, M_MOON, D_EM), (M_SUN, M_EARTH, D_SE)];
+
+        for (i, &(m1, m2, r)) in cases.iter().enumerate() {
+            let mut sys = NBodySystem::default();
+            sys.add_particle(mk(1, [0.0, 0.0, 0.0], m1));
+            sys.add_particle(mk(2, [r, 0.0, 0.0], m2));
+
+            let forces = sys.compute_all_forces();
+            assert_eq!(forces.len(), 2, "case {i}: forces len");
+
+            let mag = vmag(forces[0]);
+            let expected = G * m1 * m2 / (r * r);
+
+            assert!(
+                rel_close(mag, expected, 1e-5),
+                "case {i}: |{mag} - {expected}| / max(|expected|,1) > 1e-5 (r={r})"
+            );
+
+            assert!(
+                forces[0][0].is_sign_positive(),
+                "case {i}: X component not positive"
+            );
+            assert!(
+                forces[0][1].abs() <= 1e-9 && forces[0][2].abs() <= 1e-9,
+                "case {i}: not aligned with X"
+            );
+            assert!(
+                (forces[1][0] + forces[0][0]).abs() < 1e-9
+                    && (forces[1][1] + forces[0][1]).abs() < 1e-9
+                    && (forces[1][2] + forces[0][2]).abs() < 1e-9,
+                "case {i}: Newton's 3rd law failed"
+            );
+        }
+    }
 }
