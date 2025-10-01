@@ -1,5 +1,16 @@
 use vecmath::{Vector3, vec3_add, vec3_scale};
 
+/// A single point-mass used in the n-body simulation.
+///
+/// `Particle` stores its unique identifier, kinematic state
+/// (position, velocity, acceleration) and its mass.
+/// Fields are intentionally kept private; use the provided getters
+/// and mutable accessors to read/modify the state.
+///
+/// # Invariants
+/// - `m_mass` must be strictly greater than `0.0`.
+/// - Vectors use a right-handed coordinate system and SI-like units
+///   (meters, seconds, kilograms) unless specified otherwise.
 #[derive(Debug, Clone)]
 pub struct Particle {
     m_id: u64,
@@ -10,6 +21,10 @@ pub struct Particle {
 }
 
 impl Default for Particle {
+    /// Creates a particle with zeroed kinematic state and zero mass.
+    ///
+    /// Note: zero mass is **invalid** for integration; calling
+    /// `update_particle_euler` will panic if `mass <= 0.0`.
     fn default() -> Self {
         Self {
             m_id: 0,
@@ -22,6 +37,18 @@ impl Default for Particle {
 }
 
 impl Particle {
+    /// Constructs a new `Particle`.
+    ///
+    /// If `mass` is negative, it is clamped to a small positive value (0.1)
+    /// and a warning is printed.
+    ///
+    /// # Parameters
+    /// - `id`: stable identifier of the particle.
+    /// - `pos`: initial position vector.
+    /// - `velocity`: initial velocity vector.
+    /// - `acceleration`: initial acceleration vector (not used by Euler step;
+    ///   kept for completeness/diagnostics).
+    /// - `mass`: particle mass; must be `> 0`.
     pub fn new(
         id: u64,
         pos: Vector3<f64>,
@@ -42,6 +69,14 @@ impl Particle {
         }
     }
 
+    /// Generates a particle with random id, position, velocity, and a positive mass.
+    ///
+    /// - `position` and `velocity` components are sampled from `[0, 1)`.
+    /// - `acceleration` is set to zero.
+    /// - `mass` is guaranteed to be positive (currently ends up in `(0, 1)`).
+    ///
+    /// This is intended for quick toy setups and tests rather than
+    /// physically meaningful sampling.
     pub fn generate_random() -> Self {
         let mut rand_pos: Vector3<f64> = Default::default();
         let mut rand_velocity: Vector3<f64> = Default::default();
@@ -68,46 +103,76 @@ impl Particle {
         }
     }
 
+    /// Returns the particle identifier.
     pub fn id(&self) -> u64 {
         self.m_id
     }
 
+    /// Returns the current position vector.
     pub fn pos(&self) -> Vector3<f64> {
         self.m_position
     }
 
+    /// Returns the current velocity vector.
     pub fn velocity(&self) -> Vector3<f64> {
         self.m_velocity
     }
 
+    /// Returns the current acceleration vector.
+    ///
+    /// Note: the basic Euler update implemented here does **not** use
+    /// `m_acceleration`; it is provided for external integrators/diagnostics.
     pub fn acceleration(&self) -> Vector3<f64> {
         self.m_acceleration
     }
 
+    /// Returns the particle mass (`> 0` for valid dynamics).
     pub fn mass(&self) -> f64 {
         self.m_mass
     }
 
+    /// Mutable access to the identifier.
     pub fn id_mut(&mut self) -> &mut u64 {
         &mut self.m_id
     }
 
+    /// Mutable access to the position vector.
     pub fn pos_mut(&mut self) -> &mut Vector3<f64> {
         &mut self.m_position
     }
 
+    /// Mutable access to the velocity vector.
     pub fn velocity_mut(&mut self) -> &mut Vector3<f64> {
         &mut self.m_velocity
     }
 
+    /// Mutable access to the acceleration vector.
     pub fn acceleration_mut(&mut self) -> &mut Vector3<f64> {
         &mut self.m_acceleration
     }
 
+    /// Mutable access to mass.
+    ///
+    /// # Safety
+    /// Setting mass to `<= 0.0` will cause `update_particle_euler` to panic.
     pub fn mass_mut(&mut self) -> &mut f64 {
         &mut self.m_mass
     }
 
+    /// Advances the particle state by a single explicit Euler step using a net force.
+    ///
+    /// The method integrates
+    /// `v(t + dt) = v(t) + (F / m) * dt` and
+    /// `x(t + dt) = x(t) + v(t + dt) * dt` (semi-implicit form for position),
+    /// where `F` is the externally supplied net force acting on the particle.
+    ///
+    /// # Parameters
+    /// - `force`: net force vector applied over the time step.
+    /// - `dt`: integration time step in seconds. **Configuration parameter** —
+    ///   choose small enough to keep the explicit Euler method stable for your forces.
+    ///
+    /// # Panics
+    /// Panics if `mass <= 0.0`.
     pub fn update_particle_euler(&mut self, force: Vector3<f64>, dt: f64) {
         assert!(self.m_mass > 0.0, "mass must be > 0");
         self.m_velocity = vec3_add(
