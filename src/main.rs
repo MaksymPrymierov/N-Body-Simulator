@@ -18,6 +18,7 @@ const VEL_THIRD: [f64; 3] = [0.1, 0.0, 0.0];
 
 const PARTICLE_COUNT: usize = 1000;
 const PARTICLE_START_X: f64 = 500.26;
+const PARTICLE_START_Z: f64 = 0.0;
 const PARTICLE_SPACING: f64 = 30.0;
 const PARTICLE_Y: f64 = 1000.0;
 const PARTICLE_VEL: [f64; 3] = [0.1, 0.0, 0.0];
@@ -46,7 +47,7 @@ async fn main() {
         let position = [
             PARTICLE_START_X + (i as f64 * PARTICLE_SPACING),
             PARTICLE_Y,
-            0.0,
+            PARTICLE_START_Z + (i as f64 * PARTICLE_SPACING),
         ];
         Particle::new(
             i.try_into().unwrap(),
