@@ -1,72 +1,57 @@
 use crate::types::nbodysystem::NBodySystem;
 use crate::types::particle::Particle;
-use macroquad::camera::{Camera2D, set_camera};
+use macroquad::camera::{Camera3D, set_camera};
 use macroquad::color::{BLACK, WHITE};
-use macroquad::input::{KeyCode, get_keys_down, get_keys_pressed, mouse_wheel};
-use macroquad::math::vec2;
-use macroquad::prelude::{
-    clear_background, draw_circle, next_frame, screen_height, screen_width, set_fullscreen,
+use macroquad::input::{
+    KeyCode, get_keys_down, get_keys_pressed, mouse_delta_position, set_cursor_grab, show_mouse,
 };
+use macroquad::math::vec3;
+use macroquad::prelude::{clear_background, draw_sphere, next_frame, set_fullscreen};
 
 // --- Configuration parameters (rendering / integration) ---
-// These are internal constants; adjust to tune the visualization.
 
-// Default camera zoom and target position in world coordinates.
 const DEFAULT_ZOOM: f32 = 1000.0;
 const DEFAULT_X: f32 = 1000.0;
 const DEFAULT_Y: f32 = 850.0;
 
-// Camera panning speed factor (scaled by current zoom & screen size).
-const CAMERA_MOVE_SPEED: f32 = 5.0;
-
-// Zoom bounds (smaller -> more zoom-in).
-const MIN_ZOOM: f32 = 100.0;
-const MAX_ZOOM: f32 = 10000.0;
-
-// Scroll-wheel zoom sensitivity (platform-specific).
-#[cfg(windows)]
-const ZOOM_SENSITIVITY: f32 = 0.0009;
-#[cfg(unix)]
-const ZOOM_SENSITIVITY: f32 = 0.09;
+// Base camera moving speed factor.
+const CAMERA_MOVE_SPEED: f32 = 2.0;
 
 // Radius of drawn particles in pixels.
-const PARTICLE_RADIUS: f32 = 2.0;
+const PARTICLE_RADIUS: f32 = 5.0;
 
 /// Integration time step `dt` (simulation seconds per frame).
-///
-/// This is the **configuration parameter** that controls stability/accuracy of
-/// the explicit Euler update used by `Particle::update_particle_euler`.
-/// Larger values advance time faster but can cause instability or energy drift.
 const TIME_STEP: f64 = 100.0;
 
 /// Real-time visualization and driver for an [`NBodySystem`].
 ///
-/// `NBodyEngine` owns a mutable reference to the system, exposes a minimal camera
-/// (pan with **W/A/S/D**, zoom with mouse wheel), and advances the simulation
-/// once per frame with a fixed time step (`TIME_STEP`).
-///
 /// UI bindings:
 /// - **Space**: add a random particle
 /// - **R**:     remove all particles
-/// - **W/A/S/D**: pan camera
-/// - Mouse wheel: zoom (clamped to `[MIN_ZOOM, MAX_ZOOM]`)
+/// - **W/A/S/D**: fly camera (First-Person)
+/// - **Mouse**: look around
+/// - **Esc**: toggle mouse lock
 pub struct NBodyEngine<'a> {
     m_system: &'a mut NBodySystem,
     m_zoom: f32,
     m_x: f32,
     m_y: f32,
+    m_yaw: f32,
+    m_pitch: f32,
+    m_mouse_locked: bool,
 }
 
 impl<'a> NBodyEngine<'a> {
     /// Creates a new engine bound to an existing [`NBodySystem`].
-    ///
-    /// Camera starts at (`DEFAULT_X`, `DEFAULT_Y`) with `DEFAULT_ZOOM`.
     pub fn new(nbody_system: &'a mut NBodySystem) -> Self {
         Self {
             m_system: nbody_system,
             m_zoom: DEFAULT_ZOOM,
             m_x: DEFAULT_X,
             m_y: DEFAULT_Y,
+            m_yaw: std::f32::consts::PI / 2.0,
+            m_pitch: -89.0_f32.to_radians(),
+            m_mouse_locked: false,
         }
     }
 
@@ -76,53 +61,77 @@ impl<'a> NBodyEngine<'a> {
     }
 
     /// Adds a randomly initialized particle to the system.
-    ///
-    /// See [`Particle::generate_random`] for sampling details.
     pub fn add_random_particle(&mut self) {
         self.m_system.add_random_particle();
     }
 
     /// Initializes the fullscreen window and clears the background.
-    ///
-    /// Call this once before entering `update`.
     pub fn create_window(&mut self) {
-        set_fullscreen(true);
+        set_fullscreen(false);
         clear_background(BLACK);
+
+        set_cursor_grab(false);
+        show_mouse(true);
     }
 
     /// Main render/update loop.
-    ///
-    /// Per frame:
-    /// 1. Handles input (pan/zoom and hotkeys).
-    /// 2. Sets the `Camera2D` based on current pan/zoom.
-    /// 3. Computes all forces via `NBodySystem::compute_all_forces`.
-    /// 4. Applies a single explicit Euler step with `TIME_STEP`.
-    /// 5. Draws each particle as a white circle at its `(x, y)` world position.
-    ///
-    /// The loop yields to the runtime with `next_frame().await`.
-    pub async fn update(&mut self) {
+    pub async fn update(&mut self) -> ! {
         loop {
             clear_background(BLACK);
 
             let keys_down = get_keys_down();
+            let keys_pressed = get_keys_pressed();
 
-            if keys_down.contains(&KeyCode::A) {
-                self.m_x -= CAMERA_MOVE_SPEED * self.m_zoom / screen_width();
+            if keys_pressed.contains(&KeyCode::Escape) {
+                self.m_mouse_locked = !self.m_mouse_locked;
+                set_cursor_grab(self.m_mouse_locked);
+                show_mouse(!self.m_mouse_locked);
             }
 
-            if keys_down.contains(&KeyCode::D) {
-                self.m_x += CAMERA_MOVE_SPEED * self.m_zoom / screen_width();
+            if self.m_mouse_locked {
+                let mouse_delta = mouse_delta_position();
+                let sensitivity = 0.5;
+
+                self.m_yaw += mouse_delta.x * sensitivity;
+                self.m_pitch += mouse_delta.y * sensitivity;
+
+                let max_pitch = 89.5_f32.to_radians();
+                self.m_pitch = self.m_pitch.clamp(-max_pitch, max_pitch);
             }
+
+            let front = vec3(
+                self.m_pitch.cos() * self.m_yaw.cos(),
+                self.m_pitch.cos() * self.m_yaw.sin(),
+                self.m_pitch.sin(),
+            )
+            .normalize();
+
+            let world_up = vec3(0.0, 0.0, 1.0);
+            let right = front.cross(world_up).normalize();
+            let up = right.cross(front).normalize();
+
+            let speed = CAMERA_MOVE_SPEED * (self.m_zoom.abs() / 200.0).max(0.5);
 
             if keys_down.contains(&KeyCode::W) {
-                self.m_y += CAMERA_MOVE_SPEED * self.m_zoom / screen_height();
+                self.m_x += front.x * speed;
+                self.m_y += front.y * speed;
+                self.m_zoom += front.z * speed;
             }
-
             if keys_down.contains(&KeyCode::S) {
-                self.m_y -= CAMERA_MOVE_SPEED * self.m_zoom / screen_height();
+                self.m_x -= front.x * speed;
+                self.m_y -= front.y * speed;
+                self.m_zoom -= front.z * speed;
             }
-
-            let keys_pressed = get_keys_pressed();
+            if keys_down.contains(&KeyCode::D) {
+                self.m_x += right.x * speed;
+                self.m_y += right.y * speed;
+                self.m_zoom += right.z * speed;
+            }
+            if keys_down.contains(&KeyCode::A) {
+                self.m_x -= right.x * speed;
+                self.m_y -= right.y * speed;
+                self.m_zoom -= right.z * speed;
+            }
 
             if keys_pressed.contains(&KeyCode::Space) {
                 self.m_system.add_random_particle();
@@ -132,19 +141,11 @@ impl<'a> NBodyEngine<'a> {
                 self.m_system.remove_all_particles();
             }
 
-            let wheel = mouse_wheel().1;
-            if wheel != 0.0 {
-                self.m_zoom *= 1.0 - wheel * ZOOM_SENSITIVITY;
-                self.m_zoom = self.m_zoom.clamp(MIN_ZOOM, MAX_ZOOM);
-            }
-
-            set_camera(&Camera2D {
-                zoom: vec2(
-                    1.0 / self.m_zoom,
-                    screen_width() / screen_height() * (1.0 / self.m_zoom),
-                ),
-                target: vec2(self.m_x, self.m_y),
-                offset: vec2(0.0, 0.0),
+            let pos = vec3(self.m_x, self.m_y, self.m_zoom);
+            set_camera(&Camera3D {
+                position: pos,
+                up,
+                target: pos + front,
                 ..Default::default()
             });
 
@@ -160,7 +161,7 @@ impl<'a> NBodyEngine<'a> {
                 let x = p.pos()[0];
                 let y = p.pos()[1];
 
-                draw_circle(x as f32, y as f32, PARTICLE_RADIUS, WHITE);
+                draw_sphere(vec3(x as f32, y as f32, 0.0), PARTICLE_RADIUS, None, WHITE);
             }
 
             next_frame().await;
