@@ -160,8 +160,14 @@ impl<'a> NBodyEngine<'a> {
 
                 let x = p.pos()[0];
                 let y = p.pos()[1];
+                let z = p.pos()[2];
 
-                draw_sphere(vec3(x as f32, y as f32, 0.0), PARTICLE_RADIUS, None, WHITE);
+                draw_sphere(
+                    vec3(x as f32, y as f32, z as f32),
+                    PARTICLE_RADIUS,
+                    None,
+                    WHITE,
+                );
             }
 
             next_frame().await;
