@@ -43,11 +43,11 @@ cargo run -- --output csv --file results.csv --limit 500
 ```
 
 ### In-app controls (macroquad)
-- **W/A/S/D** — pan the camera
-- **Mouse wheel** — zoom (clamped between `MIN_ZOOM` and `MAX_ZOOM`)
+- **W/A/S/D** — move the camera
+- **Mouse** — rotate the camera
 - **Space** — add a random particle
 - **R** — remove all particles
-- Fullscreen is enabled at startup
+- **Escape** - lock/unlock mouse
 
 ---
 
