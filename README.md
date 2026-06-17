@@ -5,7 +5,7 @@
 A Rust implementation of the N-body problem, featuring real-time visualization using [macroquad](https://github.com/not-fl3/macroquad).  
 The project simulates gravitational interactions between particles, updates their states via numerical integration, and supports both CLI logging and interactive rendering.
 
-https://github.com/user-attachments/assets/5813a521-858d-400a-af17-99c9ed7d1b44
+https://github.com/user-attachments/assets/4d986f85-925f-480a-95dd-a665d3710de1
 
 ## 🔧 Features
 - Newtonian gravity: *F = G·m₁·m₂ / r²* (direction along the unit vector from one body to another).
