@@ -17,7 +17,7 @@ const DEFAULT_Y: f32 = 850.0;
 // Base camera moving speed factor.
 const CAMERA_MOVE_SPEED: f32 = 2.0;
 
-// Radius of drawn particles in pixels.
+// Radius of drawn particles.
 const PARTICLE_RADIUS: f32 = 5.0;
 
 /// Integration time step `dt` (simulation seconds per frame).
