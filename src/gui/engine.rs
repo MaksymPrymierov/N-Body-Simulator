@@ -65,7 +65,7 @@ impl<'a> NBodyEngine<'a> {
         self.m_system.add_random_particle();
     }
 
-    /// Initializes the fullscreen window and clears the background.
+    /// Initializes the window and clears the background.
     pub fn create_window(&mut self) {
         set_fullscreen(false);
         clear_background(BLACK);
