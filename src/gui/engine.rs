@@ -10,9 +10,9 @@ use macroquad::prelude::{clear_background, draw_sphere, next_frame, set_fullscre
 
 // --- Configuration parameters (rendering / integration) ---
 
-const DEFAULT_ZOOM: f32 = 1000.0;
 const DEFAULT_X: f32 = 1000.0;
 const DEFAULT_Y: f32 = 850.0;
+const DEFAULT_Z: f32 = 1000.0;
 
 // Base camera moving speed factor.
 const CAMERA_MOVE_SPEED: f32 = 2.0;
@@ -33,9 +33,9 @@ const TIME_STEP: f64 = 100.0;
 /// - **Esc**: toggle mouse lock
 pub struct NBodyEngine<'a> {
     m_system: &'a mut NBodySystem,
-    m_zoom: f32,
     m_x: f32,
     m_y: f32,
+    m_z: f32,
     m_yaw: f32,
     m_pitch: f32,
     m_mouse_locked: bool,
@@ -46,9 +46,9 @@ impl<'a> NBodyEngine<'a> {
     pub fn new(nbody_system: &'a mut NBodySystem) -> Self {
         Self {
             m_system: nbody_system,
-            m_zoom: DEFAULT_ZOOM,
             m_x: DEFAULT_X,
             m_y: DEFAULT_Y,
+            m_z: DEFAULT_Z,
             m_yaw: std::f32::consts::PI / 2.0,
             m_pitch: -89.0_f32.to_radians(),
             m_mouse_locked: false,
@@ -110,27 +110,27 @@ impl<'a> NBodyEngine<'a> {
             let right = front.cross(world_up).normalize();
             let up = right.cross(front).normalize();
 
-            let speed = CAMERA_MOVE_SPEED * (self.m_zoom.abs() / 200.0).max(0.5);
+            let speed = CAMERA_MOVE_SPEED * (self.m_z.abs() / 200.0).max(0.5);
 
             if keys_down.contains(&KeyCode::W) {
                 self.m_x += front.x * speed;
                 self.m_y += front.y * speed;
-                self.m_zoom += front.z * speed;
+                self.m_z += front.z * speed;
             }
             if keys_down.contains(&KeyCode::S) {
                 self.m_x -= front.x * speed;
                 self.m_y -= front.y * speed;
-                self.m_zoom -= front.z * speed;
+                self.m_z -= front.z * speed;
             }
             if keys_down.contains(&KeyCode::D) {
                 self.m_x += right.x * speed;
                 self.m_y += right.y * speed;
-                self.m_zoom += right.z * speed;
+                self.m_z += right.z * speed;
             }
             if keys_down.contains(&KeyCode::A) {
                 self.m_x -= right.x * speed;
                 self.m_y -= right.y * speed;
-                self.m_zoom -= right.z * speed;
+                self.m_z -= right.z * speed;
             }
 
             if keys_pressed.contains(&KeyCode::Space) {
@@ -141,7 +141,7 @@ impl<'a> NBodyEngine<'a> {
                 self.m_system.remove_all_particles();
             }
 
-            let pos = vec3(self.m_x, self.m_y, self.m_zoom);
+            let pos = vec3(self.m_x, self.m_y, self.m_z);
             set_camera(&Camera3D {
                 position: pos,
                 up,
@@ -190,9 +190,9 @@ mod tests {
         let mut sys = NBodySystem::default();
         let engine = NBodyEngine::new(&mut sys);
 
-        assert!((engine.m_zoom - super::DEFAULT_ZOOM).abs() < f32::EPSILON);
         assert!((engine.m_x - super::DEFAULT_X).abs() < f32::EPSILON);
         assert!((engine.m_y - super::DEFAULT_Y).abs() < f32::EPSILON);
+        assert!((engine.m_z - super::DEFAULT_Z).abs() < f32::EPSILON);
     }
 
     #[test]
