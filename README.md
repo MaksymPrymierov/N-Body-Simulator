@@ -43,10 +43,10 @@ cargo run -- --output csv --file results.csv --limit 500
 ```
 
 ### In-app controls (macroquad)
-- **W/A/S/D** — move the camera
-- **Mouse** — rotate the camera
-- **Space** — add a random particle
-- **R** — remove all particles
+- **W/A/S/D** - move the camera
+- **Mouse** - rotate the camera
+- **Space** - add a random particle
+- **R** - remove all particles
 - **Escape** - lock/unlock mouse
 
 ---
