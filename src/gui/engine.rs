@@ -90,7 +90,7 @@ impl<'a> NBodyEngine<'a> {
 
             if self.m_mouse_locked {
                 let mouse_delta = mouse_delta_position();
-                let sensitivity = 0.5;
+                let sensitivity = 20.0_f32.to_radians();
 
                 self.m_yaw += mouse_delta.x * sensitivity;
                 self.m_pitch += mouse_delta.y * sensitivity;
